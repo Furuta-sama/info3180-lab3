@@ -6,7 +6,17 @@ This file creates your application.
 """
 
 from app import app
+from app import forms
 from flask import render_template, request, redirect, url_for, flash
+from app import mail
+from flask_mail import Message
+
+
+# Set the default socket timeout to a value that prevents connections
+# to our SMTP server from timing out, due to sendmail's greeting pause
+# feature.
+import socket
+socket.setdefaulttimeout(30)
 
 
 ###
@@ -46,6 +56,16 @@ def send_text_file(file_name):
     file_dot_text = file_name + '.txt'
     return app.send_static_file(file_dot_text)
 
+@app.route("/contact/", methods=('GET', 'POST'))
+def contact():
+    form = forms.ContactForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        msg = Message(form.subject.data, sender=(form.firstname.data + " " + form.lastname.data,form.email.data),recipients=["to@example.com"])
+        msg.body = form.message.data
+        mail.send(msg)            
+        flash('You have successfully filled out the form', 'success')
+        return redirect(url_for('home'))
+    return render_template('contact.html',form=form)
 
 @app.after_request
 def add_header(response):
@@ -63,7 +83,6 @@ def add_header(response):
 def page_not_found(error):
     """Custom 404 page."""
     return render_template('404.html'), 404
-
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port="8080")
